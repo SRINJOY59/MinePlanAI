@@ -1,0 +1,32 @@
+# Ignore Git
+.git
+.gitignore
+
+# Ignore Python junk
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.env
+.pytest_cache/
+.mypy_cache/
+
+# Ignore Node junk
+node_modules/
+*/node_modules/
+.next/
+*/.next/
+dist/
+build/
+out/
+
+# Ignore Workspace artifacts
+.gemini/
+brain/
+.tmp/
+
+# Ignore Data (if mounted as volumes in compose)
+data/
+external_data/
+schedule_output.csv
+results_*.txt
