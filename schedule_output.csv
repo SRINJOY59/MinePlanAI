@@ -1,0 +1,16 @@
+block_id,bench,task_type,resource_type,start_hour,end_hour,duration_hours
+B201,11,drill,DRILL,0,4,4
+B101,10,drill,DRILL,4,7,3
+B201,11,blast,BLAST,4,6,2
+B101,10,blast,BLAST,7,9,2
+B201,11,haul,HAUL,7,13,6
+B101,10,haul,HAUL,10,15,5
+B202,11,drill,DRILL,13,15,2
+B102,10,drill,DRILL,15,17,2
+B202,11,blast,BLAST,15,16,1
+B102,10,blast,BLAST,17,19,2
+B202,11,haul,HAUL,17,20,3
+B102,10,haul,HAUL,20,24,4
+B301,12,drill,DRILL,24,29,5
+B301,12,blast,BLAST,29,31,2
+B301,12,haul,HAUL,32,39,7

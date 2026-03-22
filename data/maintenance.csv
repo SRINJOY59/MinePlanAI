@@ -1,0 +1,4 @@
+resource_type,start_hour,end_hour,units_offline
+DRILL,8,12,1
+HAUL,16,20,1
+BLAST,24,26,1
