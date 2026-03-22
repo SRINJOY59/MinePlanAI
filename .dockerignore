@@ -25,8 +25,3 @@ out/
 brain/
 .tmp/
 
-# Ignore Data (if mounted as volumes in compose)
-data/
-external_data/
-schedule_output.csv
-results_*.txt
