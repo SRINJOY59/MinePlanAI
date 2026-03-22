@@ -127,6 +127,7 @@ export default function HomePage() {
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
+    console.log("🔗 MinePlan AI | Connected to API at:", API_BASE);
     void refreshDashboard();
     void refreshDataset("scenario_comparison");
   }, []);
