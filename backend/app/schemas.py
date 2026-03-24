@@ -6,11 +6,11 @@ from pydantic import BaseModel, Field
 
 
 class PipelineRunRequest(BaseModel):
-    bench_height: int = Field(default=100, ge=25, le=200)
+    bench_height: int = Field(default=15, ge=10, le=30)
     max_blocks: int = Field(default=60, ge=10, le=300)
     spatial_neighbors: int = Field(default=2, ge=1, le=5)
     spatial_radius: float = Field(default=450.0, ge=50.0, le=2000.0)
-    exact_solver_limit: int = Field(default=12, ge=4, le=20)
+    exact_solver_limit: int = Field(default=20, ge=4, le=30)
 
 
 class DatasetResponse(BaseModel):

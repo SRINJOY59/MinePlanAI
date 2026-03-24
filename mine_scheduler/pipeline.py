@@ -26,6 +26,7 @@ DEFAULT_SCENARIOS = [
     {"name": "grade_heuristic", "solver": "heuristic", "strategy": "grade"},
     {"name": "value_density_heuristic", "solver": "heuristic", "strategy": "value_density"},
     {"name": "net_value_heuristic", "solver": "heuristic", "strategy": "net_value"},
+    {"name": "tonnage_heuristic", "solver": "heuristic", "strategy": "tonnage"},
     {"name": "optimized_branch_and_bound", "solver": "branch_and_bound", "strategy": "optimized_bnb"},
 ]
 
@@ -130,6 +131,11 @@ def _write_scenario_comparison(output_dir: Path, scenarios: list[dict[str, objec
             "candidate_limit",
             "candidate_count",
             "visited_nodes",
+            "pruned_nodes",
+            "beam_width",
+            "node_budget",
+            "budget_exhausted",
+            "elapsed_seconds",
             "best_surrogate_objective",
             "candidate_blocks",
             "schedule_file",
@@ -143,11 +149,11 @@ def run_web_pipeline(
     drillholes: Path = DEFAULT_DRILLHOLES,
     openmines_config: Path = DEFAULT_OPENMINES_CONFIG,
     output_dir: Path = DEFAULT_OUTPUT_DIR,
-    bench_height: int = 100,
+    bench_height: int = 15,
     max_blocks: int = 60,
     spatial_neighbors: int = 2,
     spatial_radius: float = 450.0,
-    exact_solver_limit: int = 12,
+    exact_solver_limit: int = 20,
 ) -> dict[str, object]:
     economics = EconomicParameters()
     preparation_result = prepare_web_dataset(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from collections import defaultdict
 
 from .economics import EconomicParameters, discounted_value
@@ -13,10 +14,20 @@ def _economic_duration(block: Block) -> int:
 def optimize_block_order(
     blocks: list[Block],
     precedence: list[tuple[str, str]],
-    candidate_limit: int = 12,
+    candidate_limit: int = 20,
     economics: EconomicParameters | None = None,
     fallback_strategy: str = "value_density",
+    beam_width: int = 6,
+    node_budget: int = 50_000,
 ) -> tuple[list[str], dict[str, object]]:
+    """Branch-and-bound solver with beam pruning and node budget.
+
+    Improvements over the baseline solver:
+    - ``beam_width`` limits the children explored per node (beam search pruning).
+    - ``node_budget`` hard-caps total search nodes to prevent runaway compute.
+    - Tighter optimistic bound sorts remaining blocks by *value_density* first.
+    - Elapsed wall-clock time and pruned-node count are reported in metadata.
+    """
     settings = economics or EconomicParameters()
     blocks_by_id = {block.block_id: block for block in blocks}
 
@@ -44,13 +55,16 @@ def optimize_block_order(
     best_sequence: list[str] = []
     best_score = float("-inf")
     visited_nodes = 0
+    pruned_nodes = 0
+    budget_exhausted = False
 
     def optimistic_bound(remaining: list[str], current_time: int, current_score: float) -> float:
+        """Tighter upper bound: sort remaining by value_density for a more realistic estimate."""
         time_cursor = current_time
         bound = current_score
         for block_id in sorted(
             remaining,
-            key=lambda item: blocks_by_id[item].net_value,
+            key=lambda item: (blocks_by_id[item].value_density, blocks_by_id[item].net_value),
             reverse=True,
         ):
             block = blocks_by_id[block_id]
@@ -64,6 +78,8 @@ def optimize_block_order(
                 bound += contribution
         return bound
 
+    start_time = time.perf_counter()
+
     def search(
         sequence: list[str],
         ready_nodes: list[str],
@@ -71,8 +87,16 @@ def optimize_block_order(
         current_time: int,
         current_score: float,
     ) -> None:
-        nonlocal best_sequence, best_score, visited_nodes
+        nonlocal best_sequence, best_score, visited_nodes, pruned_nodes, budget_exhausted
         visited_nodes += 1
+
+        # Hard node budget to prevent exponential blow-up.
+        if visited_nodes >= node_budget:
+            budget_exhausted = True
+            if current_score > best_score:
+                best_score = current_score
+                best_sequence = list(sequence)
+            return
 
         if not remaining:
             if current_score > best_score:
@@ -81,8 +105,10 @@ def optimize_block_order(
             return
 
         if optimistic_bound(list(remaining), current_time, current_score) <= best_score:
+            pruned_nodes += 1
             return
 
+        # Beam pruning: only explore the top beam_width children.
         branch_nodes = sorted(
             ready_nodes,
             key=lambda block_id: (
@@ -91,9 +117,12 @@ def optimize_block_order(
                 blocks_by_id[block_id].ore_grade,
             ),
             reverse=True,
-        )
+        )[:beam_width]
 
         for block_id in branch_nodes:
+            if budget_exhausted:
+                return
+
             block = blocks_by_id[block_id]
             next_time = current_time + max(1, _economic_duration(block))
             next_score = current_score + discounted_value(
@@ -116,6 +145,8 @@ def optimize_block_order(
 
     search([], ready, set(candidate_ids), 0, 0.0)
 
+    elapsed_seconds = round(time.perf_counter() - start_time, 3)
+
     best_sequence_set = set(best_sequence)
     if fallback_strategy == "grade":
         tail = sorted(
@@ -136,6 +167,11 @@ def optimize_block_order(
         "candidate_limit": candidate_limit,
         "candidate_count": len(candidate_ids),
         "visited_nodes": visited_nodes,
+        "pruned_nodes": pruned_nodes,
+        "beam_width": beam_width,
+        "node_budget": node_budget,
+        "budget_exhausted": budget_exhausted,
+        "elapsed_seconds": elapsed_seconds,
         "best_surrogate_objective": round(best_score, 2),
         "candidate_blocks": candidate_ids,
     }

@@ -38,8 +38,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--bench-height",
         type=int,
-        default=100,
-        help="Bench height used to aggregate drillhole samples into block-like units.",
+        default=15,
+        help="Bench height (10-30 m) used to aggregate drillhole samples into block-like units.",
     )
     parser.add_argument(
         "--max-blocks",

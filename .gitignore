@@ -27,3 +27,4 @@ results_*.txt
 # OS
 .DS_Store
 Thumbs.db
+myenv/

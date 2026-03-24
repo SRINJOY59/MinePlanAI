@@ -122,7 +122,7 @@ This is an important academic point:
 The following assumptions are currently used in the preprocessing stage:
 
 - drillhole samples are aggregated by `HOLEID` and bench height to form block-like units
-- default bench height is `100`
+- default bench height is `15`
 - each sample contributes to an approximate tonnage estimate
 - ore grade is derived from `Cu ppm`
 - blocks with ore grade greater than or equal to `0.8% Cu` are treated as ore blocks

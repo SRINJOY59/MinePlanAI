@@ -109,15 +109,21 @@ async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
+const RESOURCE_ICONS: Record<string, string> = {
+  DRILL: "⛏️",
+  BLAST: "💥",
+  HAUL: "🚛",
+};
+
 export default function HomePage() {
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [dataset, setDataset] = useState<DatasetResponse | null>(null);
   const [selectedDataset, setSelectedDataset] = useState<string>("scenario_comparison");
-  const [benchHeight, setBenchHeight] = useState<number>(100);
+  const [benchHeight, setBenchHeight] = useState<number>(15);
   const [maxBlocks, setMaxBlocks] = useState<number>(60);
   const [spatialNeighbors, setSpatialNeighbors] = useState<number>(2);
   const [spatialRadius, setSpatialRadius] = useState<number>(450);
-  const [exactSolverLimit, setExactSolverLimit] = useState<number>(12);
+  const [exactSolverLimit, setExactSolverLimit] = useState<number>(20);
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [statusMessage, setStatusMessage] = useState<string>("Loading current pipeline state...");
   const [lastRun, setLastRun] = useState<PipelineRunResponse | null>(null);
@@ -280,12 +286,12 @@ export default function HomePage() {
       <div className="page-grid">
         <section className="hero-shell">
           <div className="hero-main">
-            <div className="hero-kicker">MinePlan AI / Command Deck</div>
-            <h1>Make the mine planner look like the strongest thing in the room.</h1>
+            <div className="hero-kicker">⚡ MinePlan AI / Command Deck</div>
+            <h1>Open-Pit Mine Planner</h1>
             <p className="hero-copy">
-              This interface turns your project from a raw engineering tool into a decision center:
-              real-source planning inputs, optimization-aware scheduling, scenario evaluation,
-              export-ready reporting, and a visual output surface that actually feels deliberate.
+              Real-source planning inputs, optimization-aware scheduling, scenario evaluation,
+              export-ready reporting — a decision center that turns raw engineering data into
+              actionable mine production schedules.
             </p>
             <div className="hero-band">
               <div className="band-card">
@@ -297,7 +303,7 @@ export default function HomePage() {
                 <strong>{formatCompact(bestScenario?.discountedNpv ?? 0)}</strong>
               </div>
               <div className="band-card">
-                <span>Solver field</span>
+                <span>Solver</span>
                 <strong>{bestScenario?.solver ?? "pending"}</strong>
               </div>
             </div>
@@ -375,13 +381,13 @@ export default function HomePage() {
 
               <div className="control-grid">
                 <div className="field-card">
-                  <label htmlFor="benchHeight">Bench Height</label>
+                  <label htmlFor="benchHeight">Bench Height (m)</label>
                   <input
                     id="benchHeight"
                     type="number"
-                    min={25}
-                    max={200}
-                    step={25}
+                    min={10}
+                    max={30}
+                    step={1}
                     value={benchHeight}
                     onChange={(event) => setBenchHeight(Number(event.target.value))}
                   />
@@ -427,7 +433,7 @@ export default function HomePage() {
                     id="exactSolverLimit"
                     type="number"
                     min={4}
-                    max={20}
+                    max={30}
                     value={exactSolverLimit}
                     onChange={(event) => setExactSolverLimit(Number(event.target.value))}
                   />
@@ -450,7 +456,14 @@ export default function HomePage() {
 
               <div className="action-row">
                 <button className="button-primary" onClick={() => void runPipeline()} disabled={isPending}>
-                  {isPending ? "Running full pipeline..." : "Rebuild + Compare + Export"}
+                  {isPending ? (
+                    <span className="spinner-wrap">
+                      <span className="spinner" />
+                      Running full pipeline...
+                    </span>
+                  ) : (
+                    "⚡ Rebuild + Compare + Export"
+                  )}
                 </button>
                 <button
                   className="button-secondary"
@@ -471,11 +484,33 @@ export default function HomePage() {
               {errorMessage ? <div className="error-note">{errorMessage}</div> : null}
             </section>
 
+            {/* Resource Capacities */}
+            {dashboard?.resources.length ? (
+              <section className="panel">
+                <div className="panel-titlebar">
+                  <div>
+                    <p className="eyebrow">Fleet Overview</p>
+                    <h2>Resource Capacities</h2>
+                  </div>
+                  <div className="panel-badge">{dashboard.resources.length} types</div>
+                </div>
+                <div className="resource-grid">
+                  {dashboard.resources.map((res) => (
+                    <div key={res.resource_type} className="resource-card resource-card-featured">
+                      <span>{RESOURCE_ICONS[res.resource_type] ?? "⚙️"} {res.resource_type}</span>
+                      <strong>{res.count}</strong>
+                      <p>units available</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
             <section className="panel">
               <div className="panel-titlebar">
                 <div>
                   <p className="eyebrow">Scenario Arena</p>
-                  <h2>Method Comparison, But Make It Actually Readable</h2>
+                  <h2>Method Leaderboard</h2>
                 </div>
                 <div className="panel-badge">{scenarioComparison.length} contenders</div>
               </div>
@@ -569,6 +604,26 @@ export default function HomePage() {
                 )}
               </div>
             </section>
+
+            {/* Source Data Info */}
+            {dashboard?.sources ? (
+              <section className="panel">
+                <div className="panel-titlebar">
+                  <div>
+                    <p className="eyebrow">Data Lineage</p>
+                    <h2>Source Files</h2>
+                  </div>
+                </div>
+                <div className="source-stack">
+                  {Object.entries(dashboard.sources).map(([label, path]) => (
+                    <div key={label} className="source-card">
+                      <span>{label.replace(/_/g, " ")}</span>
+                      <strong>{String(path)}</strong>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
           </div>
         </div>
 
@@ -622,6 +677,14 @@ export default function HomePage() {
             </table>
           </div>
         </section>
+
+        {/* Footer */}
+        <footer className="app-footer">
+          <p>
+            <strong>MinePlan AI</strong> — Classical AI-Based Open-Pit Mine Production Planning
+          </p>
+          <p>AIFA Course Project • Constraint-Based Planning • Heuristic & B&B Scheduling</p>
+        </footer>
 
       </div>
     </main>
