@@ -2,6 +2,18 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Scatter,
+  ScatterChart,
+  Tooltip as RechartsTooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+
 type DashboardResponse = {
   counts: Record<string, number>;
   resources: Array<Record<string, string>>;
@@ -130,13 +142,24 @@ export default function HomePage() {
   const [artifactVersion, setArtifactVersion] = useState<number>(0);
   const [selectedArtifact, setSelectedArtifact] = useState<string>("report_html");
   const [previewContent, setPreviewContent] = useState<string>("");
+  const [analyticsData, setAnalyticsData] = useState<Array<Record<string, any>>>([]);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     console.log("🔗 MinePlan AI | Connected to API at:", API_BASE);
     void refreshDashboard();
     void refreshDataset("scenario_comparison");
+    void loadAnalyticsData();
   }, []);
+
+  async function loadAnalyticsData() {
+    try {
+      const response = await getJson<DatasetResponse>(`/api/datasets/block_model?limit=500`);
+      setAnalyticsData(response.rows);
+    } catch (err) {
+      console.error("Failed to load analytics data:", err);
+    }
+  }
 
   useEffect(() => {
     const loadPreview = async () => {
@@ -196,6 +219,7 @@ export default function HomePage() {
         setStatusMessage("Pipeline complete. Optimization leaderboard and exports refreshed.");
         await refreshDashboard();
         await refreshDataset(selectedDataset);
+        await loadAnalyticsData();
       } catch (error) {
         setErrorMessage(error instanceof Error ? error.message : "Pipeline run failed.");
         setStatusMessage("Pipeline run failed.");
@@ -280,6 +304,52 @@ export default function HomePage() {
     },
   ];
 
+  /* --- Analytics Data Preparation --- */
+  const benchTonnageData = useMemo(() => {
+    const benchMap: Record<string, { ore: number; waste: number }> = {};
+    for (const row of analyticsData) {
+      const bench = String(row.bench);
+      const tonnage = asNumber(row.tonnage);
+      const isOre = String(row.material_type).toUpperCase() === "ORE";
+      if (!benchMap[bench]) {
+        benchMap[bench] = { ore: 0, waste: 0 };
+      }
+      if (isOre) {
+        benchMap[bench].ore += tonnage;
+      } else {
+        benchMap[bench].waste += tonnage;
+      }
+    }
+    return Object.entries(benchMap)
+      .map(([bench, data]) => ({ bench, ...data }))
+      .sort((a, b) => Number(b.bench) - Number(a.bench)); // Top-down benches
+  }, [analyticsData]);
+
+  const scatterData = useMemo(() => {
+    return analyticsData
+      .filter((row) => String(row.material_type).toUpperCase() === "ORE")
+      .map((row) => ({
+        grade: asNumber(row.ore_grade),
+        tonnage: asNumber(row.tonnage),
+        id: String(row.block_id),
+      }));
+  }, [analyticsData]);
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="chart-tooltip">
+          <p className="label">{label || payload[0].payload.id}</p>
+          {payload.map((entry: any, index: number) => (
+            <p key={index} style={{ color: entry.color }}>
+              {entry.name}: {formatCompact(entry.value)}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <main className="page-shell">
@@ -626,6 +696,71 @@ export default function HomePage() {
             ) : null}
           </div>
         </div>
+
+        {/* Analytics Section */}
+        {analyticsData.length > 0 && (
+          <section className="panel">
+            <div className="panel-titlebar">
+              <div>
+                <p className="eyebrow">Visualizations</p>
+                <h2>Block Model Analytics</h2>
+              </div>
+              <span className="panel-badge">{analyticsData.length} blocks analyzed</span>
+            </div>
+            <div className="dashboard-grid" style={{ marginTop: 24 }}>
+              <div className="chart-card">
+                <h3>Material Tonnage by Bench</h3>
+                <p className="muted" style={{ marginBottom: 16, fontSize: "0.85rem" }}>
+                  Distribution of ORE vs WASTE across vertical benches (top down).
+                </p>
+                <div style={{ height: 300, width: "100%" }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={benchTonnageData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" horizontal={false} />
+                      <XAxis type="number" tick={{ fill: "rgba(255,255,255,0.5)" }} tickFormatter={(val) => formatCompact(val)} />
+                      <YAxis dataKey="bench" type="category" tick={{ fill: "rgba(255,255,255,0.5)" }} />
+                      <RechartsTooltip content={<CustomTooltip />} />
+                      <Bar dataKey="ore" name="Ore Tonnage" stackId="a" fill="var(--emerald)" radius={[0, 0, 0, 0]} />
+                      <Bar dataKey="waste" name="Waste Tonnage" stackId="a" fill="var(--surface-3)" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="chart-card">
+                <h3>Ore Grade vs. Tonnage</h3>
+                <p className="muted" style={{ marginBottom: 16, fontSize: "0.85rem" }}>
+                  Scatter plot showing the relationship between block block ore grade (%Cu) and tonnage.
+                </p>
+                <div style={{ height: 300, width: "100%" }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ScatterChart margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                      <XAxis
+                        dataKey="grade"
+                        type="number"
+                        name="Grade (%Cu)"
+                        tick={{ fill: "rgba(255,255,255,0.5)" }}
+                        domain={["dataMin", "dataMax"]}
+                        label={{ value: "Grade (%Cu)", position: "insideBottomRight", offset: -5, fill: "rgba(255,255,255,0.5)", fontSize: 12 }}
+                      />
+                      <YAxis
+                        dataKey="tonnage"
+                        type="number"
+                        name="Tonnage"
+                        tick={{ fill: "rgba(255,255,255,0.5)" }}
+                        tickFormatter={(val) => formatCompact(val)}
+                        label={{ value: "Tonnage", angle: -90, position: "insideLeft", fill: "rgba(255,255,255,0.5)", fontSize: 12 }}
+                      />
+                      <RechartsTooltip content={<CustomTooltip />} cursor={{ strokeDasharray: "3 3" }} />
+                      <Scatter name="Ore Blocks" data={scatterData} fill="var(--copper)" fillOpacity={0.6} />
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         <section className="panel bottom-observatory">
           <div className="panel-titlebar">

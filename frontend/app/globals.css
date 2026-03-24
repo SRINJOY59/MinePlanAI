@@ -1300,3 +1300,52 @@ button, input, select {
     height: 360px;
   }
 }
+
+/* ─── Overrides & Specifics ─── */
+
+.dashboard-grid .chart-card {
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background: var(--surface-1);
+  backdrop-filter: blur(16px);
+  transition: transform 0.25s var(--transition-bounce), border-color 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-card h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.chart-tooltip {
+  background: var(--glass-strong);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(12px);
+  color: #fff;
+}
+
+.chart-tooltip .label {
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.chart-tooltip p {
+  margin: 4px 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: var(--line) !important;
+}
